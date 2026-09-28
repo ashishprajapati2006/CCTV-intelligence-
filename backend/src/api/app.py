@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 from fastapi import FastAPI
@@ -10,28 +11,49 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from src.api.routes.cameras import router as cameras_router
-from src.api.routes.vehicles import router as vehicles_router
-from src.api.routes.watchlist import router as watchlist_router
-from src.api.routes.alerts import router as alerts_router
-from src.api.routes.dashboard import router as dashboard_router
-from src.api.routes.synthetic import router as synthetic_router
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("cctv_api")
-
+# Ensure backend directory is in sys.path before internal imports
 BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
 REPO_ROOT = BACKEND_DIR.parent if (BACKEND_DIR.parent / "frontend").exists() else BACKEND_DIR
 PROJECT_ROOT = BACKEND_DIR
 DATA_DIR = (BACKEND_DIR / "data") if (BACKEND_DIR / "data").exists() else (REPO_ROOT / "data")
 FRONTEND_DIST = (REPO_ROOT / "frontend" / "dist") if (REPO_ROOT / "frontend" / "dist").exists() else (BACKEND_DIR / "frontend" / "dist")
 
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+# PEP 366: Support direct script execution without package resolution errors
+if __name__ == "__main__" and not __package__:
+    __package__ = "src.api"
+
+try:
+    from .routes.cameras import router as cameras_router
+    from .routes.vehicles import router as vehicles_router
+    from .routes.watchlist import router as watchlist_router
+    from .routes.alerts import router as alerts_router
+    from .routes.dashboard import router as dashboard_router
+    from .routes.synthetic import router as synthetic_router
+except (ImportError, ModuleNotFoundError):
+    from src.api.routes.cameras import router as cameras_router
+    from src.api.routes.vehicles import router as vehicles_router
+    from src.api.routes.watchlist import router as watchlist_router
+    from src.api.routes.alerts import router as alerts_router
+    from src.api.routes.dashboard import router as dashboard_router
+    from src.api.routes.synthetic import router as synthetic_router
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("cctv_api")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Pre-warm AI models in background so user requests experience immediate low-latency detection."""
     import threading
-    from src.api.routes.synthetic import prewarm_models
+    try:
+        from .routes.synthetic import prewarm_models
+    except (ImportError, ModuleNotFoundError):
+        from src.api.routes.synthetic import prewarm_models
     threading.Thread(target=prewarm_models, daemon=True, name="ai_prewarmer").start()
     yield
 
@@ -113,4 +135,8 @@ if FRONTEND_DIST.exists():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("src.api.app:app", host="0.0.0.0", port=8000, reload=True)
+    port = int(os.getenv("PORT", "8000"))
+    app_module = "backend.src.api.app:app" if (REPO_ROOT / "backend").exists() else "src.api.app:app"
+    app_dir = str(REPO_ROOT) if (REPO_ROOT / "backend").exists() else str(BACKEND_DIR)
+    uvicorn.run(app_module, host="0.0.0.0", port=port, reload=True, app_dir=app_dir)
+
