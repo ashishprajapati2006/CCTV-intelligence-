@@ -4,7 +4,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://cctv-intelligence-platform-backend.onrender.com/api/$1"
+      "destination": "https://cctv-intelligence.onrender.com/api/$1"
     },
     {
       "source": "/(.*)",
