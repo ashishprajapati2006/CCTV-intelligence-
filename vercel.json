@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd frontend && npm install && npm run build",
+  "buildCommand": "node -e \"const fs=require('fs'),cp=require('child_process'); if(fs.existsSync('frontend'))process.chdir('frontend'); cp.execSync('npm run build',{stdio:'inherit'});\"",
   "outputDirectory": "frontend/dist",
   "rewrites": [
     {
