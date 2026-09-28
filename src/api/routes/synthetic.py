@@ -31,11 +31,17 @@ from fastapi.responses import FileResponse, JSONResponse, Response, StreamingRes
 import ultralytics
 from ultralytics import YOLO
 
-from src.ai.anpr.normalizer import normalize_with_audit
-
 # Backwards compatibility shim for older YOLO LP weights trained with ultralytics.yolo
 if "ultralytics.yolo" not in sys.modules:
     sys.modules["ultralytics.yolo"] = ultralytics
+
+try:
+    import torch
+    torch.set_num_threads(2)
+except Exception:
+    pass
+
+from src.ai.anpr.normalizer import normalize_with_audit
 
 logger = logging.getLogger("synthetic_api")
 
@@ -57,7 +63,7 @@ SNAPSHOT_DIR.mkdir(parents=True, exist_ok=True)
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 MATCHES_FILE.parent.mkdir(parents=True, exist_ok=True)
 
-# ─── Load AI Models (Lazy Loaded / Shared) ──────────────────────────────────
+# ─── Load AI Models (Pre-Warmed / Shared) ────────────────────────────────────
 _yolo_veh_model: Optional[YOLO] = None
 _yolo_lp_model: Optional[YOLO] = None
 _ocr_reader = None
@@ -66,24 +72,32 @@ _AI_EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="synthetic_a
 def get_yolo_veh() -> YOLO:
     global _yolo_veh_model
     if _yolo_veh_model is None:
-        model_path = PROJECT_ROOT / "yolov8n.pt"
-        if not model_path.exists():
-            model_path = PROJECT_ROOT / "weights" / "yolov8n.pt"
-        logger.info(f"Loading YOLO Vehicle model from {model_path}")
-        _yolo_veh_model = YOLO(str(model_path) if model_path.exists() else "yolov8n.pt")
+        candidates = [
+            PROJECT_ROOT / "yolov8n.pt",
+            PROJECT_ROOT / "weights" / "yolov8n.pt",
+            Path("yolov8n.pt"),
+            Path("weights/yolov8n.pt"),
+        ]
+        model_path = next((p for p in candidates if p.exists()), None)
+        logger.info(f"Loading YOLO Vehicle model from {model_path or 'yolov8n.pt'}")
+        _yolo_veh_model = YOLO(str(model_path) if model_path else "yolov8n.pt")
     return _yolo_veh_model
 
 def get_yolo_lp() -> Optional[YOLO]:
     global _yolo_lp_model
     if _yolo_lp_model is None:
-        model_path = PROJECT_ROOT / "license_plate_detector.pt"
-        if not model_path.exists():
-            model_path = PROJECT_ROOT / "weights" / "license_plate_detector.pt"
-        if model_path.exists():
+        candidates = [
+            PROJECT_ROOT / "license_plate_detector.pt",
+            PROJECT_ROOT / "weights" / "license_plate_detector.pt",
+            Path("license_plate_detector.pt"),
+            Path("weights/license_plate_detector.pt"),
+        ]
+        model_path = next((p for p in candidates if p.exists()), None)
+        if model_path:
             logger.info(f"Loading YOLO LP model from {model_path}")
             _yolo_lp_model = YOLO(str(model_path))
         else:
-            logger.warning(f"License plate model not found at {model_path}")
+            logger.warning(f"License plate model not found at candidate paths: {[str(p) for p in candidates]}")
     return _yolo_lp_model
 
 def get_ocr():
@@ -95,8 +109,8 @@ def get_ocr():
             _ocr_reader = easyocr.Reader(["en"], gpu=False, verbose=False)
         except Exception as e:
             logger.warning(f"Failed to initialize EasyOCR: {e}")
-            _ocr_reader = False
-    return _ocr_reader if _ocr_reader is not False else None
+            return None
+    return _ocr_reader
 
 
 _paddle_ocr_engine = None
@@ -112,6 +126,23 @@ def get_paddle_ocr():
             logger.debug(f"PaddleOCR unavailable: {e}")
             _paddle_ocr_engine = False
     return _paddle_ocr_engine if _paddle_ocr_engine is not False else None
+
+
+def prewarm_models():
+    """Pre-warm all AI models into memory on server startup."""
+    try:
+        try:
+            import torch
+            torch.set_num_threads(2)
+        except Exception:
+            pass
+        get_yolo_veh()
+        get_yolo_lp()
+        get_ocr()
+        logger.info("AI models (YOLO Vehicle, YOLO LP, EasyOCR) pre-warmed successfully.")
+    except Exception as e:
+        logger.warning(f"AI model pre-warming encountered: {e}")
+
 
 
 # ─── Watchlist & Real-Time Alerts In-Memory Store ───────────────────────────
@@ -379,6 +410,28 @@ class SimpleVehicleTracker:
 
 
 # ─── Endpoints ───────────────────────────────────────────────────────────────
+
+@router.get("/pipeline-status")
+def get_pipeline_status():
+    """Diagnostic endpoint reporting real-time status of YOLO detectors and OCR engines."""
+    veh_paths = [
+        str(p) for p in [PROJECT_ROOT / "yolov8n.pt", PROJECT_ROOT / "weights" / "yolov8n.pt", Path("yolov8n.pt"), Path("weights/yolov8n.pt")]
+        if p.exists()
+    ]
+    lp_paths = [
+        str(p) for p in [PROJECT_ROOT / "license_plate_detector.pt", PROJECT_ROOT / "weights" / "license_plate_detector.pt", Path("license_plate_detector.pt"), Path("weights/license_plate_detector.pt")]
+        if p.exists()
+    ]
+    return {
+        "status": "operational",
+        "yolo_vehicle": {"loaded": _yolo_veh_model is not None, "available_paths": veh_paths},
+        "yolo_license_plate": {"loaded": _yolo_lp_model is not None, "available_paths": lp_paths},
+        "easyocr": {"loaded": _ocr_reader is not None and _ocr_reader is not False},
+        "watchlist_records": len(get_watchlist_index()),
+        "torch_threads": torch.get_num_threads() if "torch" in sys.modules else None,
+        "environment": "production" if os.getenv("RENDER") else "local"
+    }
+
 
 @router.get("/videos")
 def list_synthetic_videos():

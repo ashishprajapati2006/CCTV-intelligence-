@@ -4,12 +4,19 @@ services:
     env: python
     region: oregon
     plan: free
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu && pip install -r requirements.txt && python -c "import easyocr; easyocr.Reader(['en'], gpu=False)"
     startCommand: python -m uvicorn src.api.app:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
+      - key: OMP_NUM_THREADS
+        value: "2"
+      - key: MKL_NUM_THREADS
+        value: "2"
+      - key: PYTHONUNBUFFERED
+        value: "1"
       - key: SENTINEL_AUTH_EMAIL
         sync: false
       - key: SENTINEL_AUTH_PASSWORD
         sync: false
+

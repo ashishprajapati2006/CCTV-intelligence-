@@ -14,12 +14,11 @@ import {
 export const API_BASE = (
   import.meta.env.VITE_API_URL ||
   import.meta.env.VITE_API_BASE_URL ||
-  (typeof window !== "undefined" && window.location.hostname.endsWith(".vercel.app")
-    ? ""
-    : typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1"
-      ? "https://cctv-intelligence-platform-backend.onrender.com"
-      : "")
+  (typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1"
+    ? "https://cctv-intelligence-platform-backend.onrender.com"
+    : "")
 ).replace(/\/$/, "")
+
 
 export function getEvidenceUrl(url?: string): string | undefined {
   if (!url) return undefined

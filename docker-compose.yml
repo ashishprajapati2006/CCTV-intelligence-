@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  cctv-platform:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cctv-intelligence-platform
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - OMP_NUM_THREADS=2
+      - MKL_NUM_THREADS=2
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+      - ./Synthetic Dataset/uploads:/app/Synthetic Dataset/uploads

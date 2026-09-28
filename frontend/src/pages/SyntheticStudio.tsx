@@ -424,13 +424,13 @@ export const SyntheticStudio: React.FC = () => {
       // Draw current video frame preserving high detail for number plate OCR
       const srcW = video.videoWidth || 1280
       const srcH = video.videoHeight || 720
-      const targetW = Math.min(srcW, 1280)
+      const targetW = Math.min(srcW, 960)
       const targetH = Math.round(targetW * (srcH / srcW))
       canvas.width = targetW
       canvas.height = targetH
       ctx.drawImage(video, 0, 0, targetW, targetH)
 
-      const b64Data = canvas.toDataURL("image/jpeg", 0.85)
+      const b64Data = canvas.toDataURL("image/jpeg", 0.82)
 
       const payload = {
         video_id: selectedVideo,
@@ -443,11 +443,17 @@ export const SyntheticStudio: React.FC = () => {
         camera_name: activeVideo?.display_name || "CAM-01"
       }
 
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000)
+
       const res = await fetch(`${API_BASE}/api/synthetic/analyze-frame`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: controller.signal
       })
+      clearTimeout(timeoutId)
+
 
       if (res.ok) {
         const data = await res.json()
@@ -1023,11 +1029,17 @@ export const SyntheticStudio: React.FC = () => {
                     <img
                       src={getEvidenceUrl(vid.thumbnail_url)}
                       alt={vid.display_name}
-                      className="w-full h-full object-cover"
                       onError={(e) => {
-                        ;(e.target as HTMLElement).style.display = "none"
+                        const target = e.currentTarget
+                        const localThumb = `/thumbnails/${vid.filename.replace(".mp4", "")}.jpg`
+                        if (!target.src.endsWith(localThumb)) {
+                          target.src = localThumb
+                        } else {
+                          ;(e.target as HTMLElement).style.display = "none"
+                        }
                       }}
                     />
+
                   ) : (
                     <div className="flex flex-col items-center justify-center p-2 text-slate-500">
                       <Camera className="w-5 h-5 text-police-500 mb-1" />
@@ -1089,7 +1101,14 @@ export const SyntheticStudio: React.FC = () => {
                 }}
                 onPlay={() => setIsPlaying(true)}
                 onPause={() => setIsPlaying(false)}
+                onError={(e) => {
+                  const target = e.currentTarget
+                  if (!target.src.endsWith("/sample_cctv.mp4")) {
+                    target.src = "/sample_cctv.mp4"
+                  }
+                }}
               />
+
 
               {/* ── Real-Time Dynamic AI SVG HUD Overlay ──────────────── */}
               <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 1000 562.5">

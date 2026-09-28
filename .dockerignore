@@ -1,0 +1,20 @@
+.git
+.github
+node_modules
+frontend/node_modules
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+data/snapshots
+data/analysis
+data/synthetic_cache
+logs
+scratch
+.env
+.env.*
+.vscode
+*.patch
+Synthetic Dataset/*.mp4
+!frontend/public/sample_cctv.mp4

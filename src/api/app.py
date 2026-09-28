@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,11 +24,23 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
 FRONTEND_DIST = PROJECT_ROOT / "frontend" / "dist"
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Pre-warm AI models in background so user requests experience immediate low-latency detection."""
+    import threading
+    from src.api.routes.synthetic import prewarm_models
+    threading.Thread(target=prewarm_models, daemon=True, name="ai_prewarmer").start()
+    yield
+
+
 app = FastAPI(
     title="Gujarat Police CCTV Intelligence Platform API",
     description="Backend API powering the Operator Command Centre (Step 14). Integrates CCTV catalogue, authenticated HLS proxying, ANPR results, watchlist matching, and journey reconstruction.",
     version="1.0.0",
+    lifespan=lifespan,
 )
+
 
 # CORS configuration for production Vercel frontend, Render backend, and local development
 cors_origins = [
