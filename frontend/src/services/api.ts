@@ -122,4 +122,7 @@ export const api = {
   // Dashboard
   getDashboardStats: () => request<DashboardStats>("/api/dashboard/stats"),
   getDashboardAnalytics: () => request<AnalyticsData>("/api/dashboard/analytics"),
+
+  // Health check
+  getHealth: () => request<{ status: string; service?: string; version?: string }>("/api/health"),
 }

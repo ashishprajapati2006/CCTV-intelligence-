@@ -314,7 +314,7 @@ The Command Centre interface will open at `http://localhost:5173`.
 ## ☁️ Deployment Guide (Connecting Deployed Vercel Link to Backend)
 
 The frontend is deployed on Vercel at:  
-👉 **[CCTV Intelligence Platform (Vercel)](https://cctv-intelligence-platform.vercel.app/)**
+👉 **[CCTV Intelligence Platform (Vercel)](https://cctv-intelligence.vercel.app/)**
 
 ### Why is a Cloud Backend Required?
 Vercel hosts static frontend files serverlessly. Real-time computer vision inference (YOLOv8, OpenCV video streaming, and EasyOCR) requires a persistent Python backend runtime.

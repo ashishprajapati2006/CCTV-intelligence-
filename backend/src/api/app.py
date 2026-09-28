@@ -68,6 +68,7 @@ app = FastAPI(
 
 # CORS configuration for production Vercel frontend, Render backend, and local development
 cors_origins = [
+    "https://cctv-intelligence.vercel.app",
     "https://cctv-intelligence-platform.vercel.app",
     "https://cctv-intelligence.onrender.com",
     "https://cctv-intelligence-platform-backend.onrender.com",

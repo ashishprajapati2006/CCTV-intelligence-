@@ -1,8 +1,9 @@
-import React from "react"
+import React, { useEffect } from "react"
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import { AuthProvider } from "./context/AuthContext"
 import { ThemeProvider } from "./context/ThemeContext"
 import { Layout } from "./components/layout/Layout"
+import { api } from "./services/api"
 
 // Pages
 import { Dashboard } from "./pages/Dashboard"
@@ -20,6 +21,18 @@ import { HealthView } from "./pages/HealthView"
 import { SyntheticStudio } from "./pages/SyntheticStudio"
 
 export const App: React.FC = () => {
+  useEffect(() => {
+    api.getHealth()
+      .then((data) => {
+        if (data?.status === "healthy" || data?.status) {
+          console.log("backend connected")
+        }
+      })
+      .catch((err) => {
+        console.warn("Backend connection check:", err?.message || err)
+      })
+  }, [])
+
   return (
     <ThemeProvider>
       <AuthProvider>
