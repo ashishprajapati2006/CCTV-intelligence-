@@ -16,7 +16,11 @@ from src.common.logging import get_logger
 logger = get_logger("api_cameras")
 router = APIRouter(prefix="/api/cameras", tags=["Cameras"])
 
-CATALOGUE_PATH = Path("data/catalogue/normalized/cameras.json")
+BACKEND_DIR = Path(__file__).resolve().parent.parent.parent.parent
+REPO_ROOT = BACKEND_DIR.parent if (BACKEND_DIR.parent / "frontend").exists() else BACKEND_DIR
+DATA_DIR = (BACKEND_DIR / "data") if (BACKEND_DIR / "data").exists() else (REPO_ROOT / "data")
+
+CATALOGUE_PATH = DATA_DIR / "catalogue" / "normalized" / "cameras.json"
 
 
 def _load_cameras() -> List[dict]:
@@ -26,8 +30,8 @@ def _load_cameras() -> List[dict]:
         return json.load(f)
 
 
-MATCHES_FILE = Path("data/matches/confirmed/matches.jsonl")
-OBSERVATIONS_FILE = Path("data/observed/vehicles/observations.jsonl")
+MATCHES_FILE = DATA_DIR / "matches" / "confirmed" / "matches.jsonl"
+OBSERVATIONS_FILE = DATA_DIR / "observed" / "vehicles" / "observations.jsonl"
 
 
 def _get_camera_stats():
@@ -196,9 +200,11 @@ from fastapi.responses import StreamingResponse, FileResponse
 
 load_dotenv()
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-SYNTHETIC_DIR = PROJECT_ROOT / "Synthetic Dataset"
-PUBLIC_DIR = PROJECT_ROOT / "frontend" / "public"
+BACKEND_DIR = Path(__file__).resolve().parent.parent.parent.parent
+REPO_ROOT = BACKEND_DIR.parent if (BACKEND_DIR.parent / "frontend").exists() else BACKEND_DIR
+PROJECT_ROOT = BACKEND_DIR
+SYNTHETIC_DIR = (REPO_ROOT / "Synthetic Dataset") if (REPO_ROOT / "Synthetic Dataset").exists() else (BACKEND_DIR / "Synthetic Dataset")
+PUBLIC_DIR = (REPO_ROOT / "frontend" / "public") if (REPO_ROOT / "frontend" / "public").exists() else (BACKEND_DIR / "frontend" / "public")
 
 
 def _get_camera_video_path(camera_id: str) -> Optional[Path]:

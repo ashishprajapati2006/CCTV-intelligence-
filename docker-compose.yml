@@ -15,5 +15,5 @@ services:
       - PYTHONUNBUFFERED=1
     restart: unless-stopped
     volumes:
-      - ./data:/app/data
+      - ./backend/data:/app/backend/data
       - ./Synthetic Dataset/uploads:/app/Synthetic Dataset/uploads

@@ -12,8 +12,10 @@ from src.api.schemas import WatchlistEntrySchema
 
 router = APIRouter(prefix="/api/watchlist", tags=["watchlist"])
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-WATCHLIST_FILE = PROJECT_ROOT / "data" / "watchlist" / "vehicles" / "watchlist.json"
+BACKEND_DIR = Path(__file__).resolve().parent.parent.parent.parent
+REPO_ROOT = BACKEND_DIR.parent if (BACKEND_DIR.parent / "frontend").exists() else BACKEND_DIR
+PROJECT_ROOT = BACKEND_DIR
+WATCHLIST_FILE = (BACKEND_DIR / "data" / "watchlist" / "vehicles" / "watchlist.json") if (BACKEND_DIR / "data").exists() else (REPO_ROOT / "data" / "watchlist" / "vehicles" / "watchlist.json")
 
 
 class CreateWatchlistTargetRequest(BaseModel):
@@ -111,4 +113,9 @@ def add_watchlist_target(req: CreateWatchlistTargetRequest):
     
     items.append(new_entry)
     _save_watchlist(items)
+    try:
+        from src.api.routes.synthetic import refresh_watchlist_index
+        refresh_watchlist_index()
+    except Exception:
+        pass
     return new_entry

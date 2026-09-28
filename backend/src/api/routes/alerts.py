@@ -13,9 +13,12 @@ from src.api.schemas import AlertSchema, AlertActionRequest
 
 router = APIRouter(prefix="/api/alerts", tags=["alerts"])
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-MATCHES_FILE = PROJECT_ROOT / "data" / "matches" / "confirmed" / "matches.jsonl"
-ALERTS_STATE_FILE = PROJECT_ROOT / "data" / "matches" / "alerts_state.json"
+BACKEND_DIR = Path(__file__).resolve().parent.parent.parent.parent
+REPO_ROOT = BACKEND_DIR.parent if (BACKEND_DIR.parent / "frontend").exists() else BACKEND_DIR
+PROJECT_ROOT = BACKEND_DIR
+DATA_DIR = (BACKEND_DIR / "data") if (BACKEND_DIR / "data").exists() else (REPO_ROOT / "data")
+MATCHES_FILE = DATA_DIR / "matches" / "confirmed" / "matches.jsonl"
+ALERTS_STATE_FILE = DATA_DIR / "matches" / "alerts_state.json"
 
 # In-memory store + disk persistence for operator actions
 _alerts_state_cache: Dict[str, Dict[str, Any]] = {}
@@ -27,7 +30,7 @@ def _format_evidence_url(image_path: Optional[str]) -> Optional[str]:
         return None
     p = image_path.replace("\\", "/").strip()
     rel = p[5:] if p.startswith("data/") else p
-    disk_file = PROJECT_ROOT / "data" / rel
+    disk_file = DATA_DIR / rel
     if not disk_file.exists():
         return None
     return f"/api/evidence/{rel}"

@@ -66,6 +66,11 @@ data/detections/
 data/footage/
 data/synthetic_cache/
 data/analysis/
+backend/data/snapshots/
+backend/data/detections/
+backend/data/footage/
+backend/data/synthetic_cache/
+backend/data/analysis/
 scratch/
 *.jpg
 *.jpeg

@@ -4,8 +4,8 @@ services:
     env: python
     region: oregon
     plan: free
-    buildCommand: pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu && pip install -r requirements.txt && python -c "import easyocr; easyocr.Reader(['en'], gpu=False)"
-    startCommand: python -m uvicorn src.api.app:app --host 0.0.0.0 --port $PORT
+    buildCommand: pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu && pip install -r backend/requirements.txt && python -c "import easyocr; easyocr.Reader(['en'], gpu=False)"
+    startCommand: python -m uvicorn backend.src.api.app:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9

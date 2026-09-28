@@ -37,32 +37,26 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
 
 # Install Python requirements
-COPY requirements.txt .
+COPY backend/requirements.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Pre-download and cache EasyOCR model weights into ~/.EasyOCR so no download occurs at runtime
 RUN python -c "import easyocr; easyocr.Reader(['en'], gpu=False)"
 
-# Copy model files and weights
-COPY yolov8n.pt /app/yolov8n.pt
-COPY license_plate_detector.pt /app/license_plate_detector.pt
-COPY weights/ /app/weights/
+# Copy backend application, weights, config, and data
+COPY backend/ /app/backend/
+COPY src/ /app/src/
 
 # Pre-warm YOLO weights
-RUN python -c "from ultralytics import YOLO; YOLO('yolov8n.pt'); YOLO('license_plate_detector.pt')"
-
-# Copy core source and configuration
-COPY src/ /app/src/
-COPY config/ /app/config/
-COPY data/ /app/data/
+RUN python -c "from ultralytics import YOLO; YOLO('/app/backend/weights/yolov8n.pt'); YOLO('/app/backend/weights/license_plate_detector.pt')"
 
 # Copy built frontend assets so FastAPI can serve both API & Web UI
 COPY --from=frontend-builder /app/frontend/dist /app/frontend/dist
 COPY frontend/public/ /app/frontend/public/
 
 # Ensure runtime directories exist
-RUN mkdir -p /app/data/synthetic_cache/thumbnails \
-             /app/data/synthetic_cache/snapshots \
+RUN mkdir -p /app/backend/data/synthetic_cache/thumbnails \
+             /app/backend/data/synthetic_cache/snapshots \
              /app/Synthetic\ Dataset/uploads
 
 EXPOSE 8000
@@ -70,4 +64,4 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD curl -f http://localhost:${PORT:-8000}/api/health || exit 1
 
-CMD ["sh", "-c", "python -m uvicorn src.api.app:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "-c", "python -m uvicorn backend.src.api.app:app --host 0.0.0.0 --port ${PORT:-8000}"]

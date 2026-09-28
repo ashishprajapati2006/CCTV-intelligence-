@@ -14,7 +14,10 @@ from src.api.routes.cameras import _load_cameras
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+BACKEND_DIR = Path(__file__).resolve().parent.parent.parent.parent
+REPO_ROOT = BACKEND_DIR.parent if (BACKEND_DIR.parent / "frontend").exists() else BACKEND_DIR
+PROJECT_ROOT = BACKEND_DIR
+DATA_DIR = (BACKEND_DIR / "data") if (BACKEND_DIR / "data").exists() else (REPO_ROOT / "data")
 
 
 @router.get("/stats", response_model=DashboardStatsSchema)
@@ -26,7 +29,7 @@ def get_dashboard_stats():
     watchlist = _load_watchlist()
     alerts = _get_all_alerts()
     
-    anpr_dir = PROJECT_ROOT / "data" / "anpr"
+    anpr_dir = DATA_DIR / "anpr"
     ai_active_cameras = 0
     if anpr_dir.exists():
         ai_active_cameras = len([d for d in anpr_dir.iterdir() if d.is_dir() and d.name.startswith("cam")])

@@ -47,16 +47,19 @@ logger = logging.getLogger("synthetic_api")
 
 router = APIRouter(prefix="/api/synthetic", tags=["synthetic"])
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-SYNTHETIC_DIR = PROJECT_ROOT / "Synthetic Dataset"
-CACHE_DIR = PROJECT_ROOT / "data" / "synthetic_cache"
+BACKEND_DIR = Path(__file__).resolve().parent.parent.parent.parent
+REPO_ROOT = BACKEND_DIR.parent if (BACKEND_DIR.parent / "frontend").exists() else BACKEND_DIR
+PROJECT_ROOT = BACKEND_DIR
+
+SYNTHETIC_DIR = (REPO_ROOT / "Synthetic Dataset") if (REPO_ROOT / "Synthetic Dataset").exists() else (BACKEND_DIR / "Synthetic Dataset")
+CACHE_DIR = BACKEND_DIR / "data" / "synthetic_cache"
 THUMBNAIL_DIR = CACHE_DIR / "thumbnails"
 SNAPSHOT_DIR = CACHE_DIR / "snapshots"
 UPLOADS_DIR = SYNTHETIC_DIR / "uploads"
-SYNTHETIC_WATCHLIST_PATH = PROJECT_ROOT / "data" / "watchlist" / "vehicles" / "synthetic_watchlist.json"
-CENTRAL_WATCHLIST_PATH = PROJECT_ROOT / "data" / "watchlist" / "vehicles" / "watchlist.json"
-MATCHES_FILE = PROJECT_ROOT / "data" / "matches" / "confirmed" / "matches.jsonl"
-ALERTS_STATE_FILE = PROJECT_ROOT / "data" / "matches" / "alerts_state.json"
+SYNTHETIC_WATCHLIST_PATH = BACKEND_DIR / "data" / "watchlist" / "vehicles" / "synthetic_watchlist.json"
+CENTRAL_WATCHLIST_PATH = BACKEND_DIR / "data" / "watchlist" / "vehicles" / "watchlist.json"
+MATCHES_FILE = BACKEND_DIR / "data" / "matches" / "confirmed" / "matches.jsonl"
+ALERTS_STATE_FILE = BACKEND_DIR / "data" / "matches" / "alerts_state.json"
 
 THUMBNAIL_DIR.mkdir(parents=True, exist_ok=True)
 SNAPSHOT_DIR.mkdir(parents=True, exist_ok=True)
@@ -73,10 +76,12 @@ def get_yolo_veh() -> YOLO:
     global _yolo_veh_model
     if _yolo_veh_model is None:
         candidates = [
-            PROJECT_ROOT / "yolov8n.pt",
-            PROJECT_ROOT / "weights" / "yolov8n.pt",
-            Path("yolov8n.pt"),
+            BACKEND_DIR / "weights" / "yolov8n.pt",
+            BACKEND_DIR / "yolov8n.pt",
+            REPO_ROOT / "weights" / "yolov8n.pt",
+            REPO_ROOT / "yolov8n.pt",
             Path("weights/yolov8n.pt"),
+            Path("yolov8n.pt"),
         ]
         model_path = next((p for p in candidates if p.exists()), None)
         logger.info(f"Loading YOLO Vehicle model from {model_path or 'yolov8n.pt'}")
@@ -87,10 +92,12 @@ def get_yolo_lp() -> Optional[YOLO]:
     global _yolo_lp_model
     if _yolo_lp_model is None:
         candidates = [
-            PROJECT_ROOT / "license_plate_detector.pt",
-            PROJECT_ROOT / "weights" / "license_plate_detector.pt",
-            Path("license_plate_detector.pt"),
+            BACKEND_DIR / "weights" / "license_plate_detector.pt",
+            BACKEND_DIR / "license_plate_detector.pt",
+            REPO_ROOT / "weights" / "license_plate_detector.pt",
+            REPO_ROOT / "license_plate_detector.pt",
             Path("weights/license_plate_detector.pt"),
+            Path("license_plate_detector.pt"),
         ]
         model_path = next((p for p in candidates if p.exists()), None)
         if model_path:
@@ -170,22 +177,29 @@ def _levenshtein(s1: str, s2: str) -> int:
     return previous_row[-1]
 
 
+def refresh_watchlist_index() -> Dict[str, Dict[str, Any]]:
+    """Clear and reload the in-memory watchlist lookup index."""
+    global _WATCHLIST_INDEX
+    _WATCHLIST_INDEX.clear()
+    return get_watchlist_index()
+
+
 def get_watchlist_index() -> Dict[str, Dict[str, Any]]:
     """Retrieve indexed watchlist targets with fast normalized hash lookup."""
     global _WATCHLIST_INDEX
     if not _WATCHLIST_INDEX:
-        target = SYNTHETIC_WATCHLIST_PATH if SYNTHETIC_WATCHLIST_PATH.exists() else CENTRAL_WATCHLIST_PATH
-        if target.exists():
+        paths = [p for p in [CENTRAL_WATCHLIST_PATH, SYNTHETIC_WATCHLIST_PATH] if p.exists()]
+        for p in paths:
             try:
-                with open(target, "r", encoding="utf-8") as f:
+                with open(p, "r", encoding="utf-8") as f:
                     records = json.load(f)
                 for r in records:
                     norm = r.get("normalized_registration_number", r.get("registration_number", "")).upper().replace(" ", "").replace("-", "")
-                    if norm:
+                    if norm and norm not in _WATCHLIST_INDEX:
                         _WATCHLIST_INDEX[norm] = r
-                logger.info(f"Loaded {len(_WATCHLIST_INDEX)} watchlist records for real-time CCTV correlation")
             except Exception as e:
-                logger.error(f"Error loading watchlist: {e}")
+                logger.error(f"Error loading watchlist from {p}: {e}")
+        logger.info(f"Loaded {len(_WATCHLIST_INDEX)} watchlist records for real-time CCTV correlation")
     return _WATCHLIST_INDEX
 
 
@@ -415,11 +429,11 @@ class SimpleVehicleTracker:
 def get_pipeline_status():
     """Diagnostic endpoint reporting real-time status of YOLO detectors and OCR engines."""
     veh_paths = [
-        str(p) for p in [PROJECT_ROOT / "yolov8n.pt", PROJECT_ROOT / "weights" / "yolov8n.pt", Path("yolov8n.pt"), Path("weights/yolov8n.pt")]
+        str(p) for p in [BACKEND_DIR / "weights" / "yolov8n.pt", REPO_ROOT / "weights" / "yolov8n.pt", Path("weights/yolov8n.pt"), Path("yolov8n.pt")]
         if p.exists()
     ]
     lp_paths = [
-        str(p) for p in [PROJECT_ROOT / "license_plate_detector.pt", PROJECT_ROOT / "weights" / "license_plate_detector.pt", Path("license_plate_detector.pt"), Path("weights/license_plate_detector.pt")]
+        str(p) for p in [BACKEND_DIR / "weights" / "license_plate_detector.pt", REPO_ROOT / "weights" / "license_plate_detector.pt", Path("weights/license_plate_detector.pt"), Path("license_plate_detector.pt")]
         if p.exists()
     ]
     return {
@@ -561,10 +575,11 @@ def stream_synthetic_video_file(filename: str):
         UPLOADS_DIR / safe_name,
         SYNTHETIC_DIR / clean_name,
         UPLOADS_DIR / clean_name,
-        PROJECT_ROOT / safe_name,
-        PROJECT_ROOT / clean_name,
-        PROJECT_ROOT / "frontend" / "public" / safe_name,
-        PROJECT_ROOT / "frontend" / "public" / clean_name,
+        BACKEND_DIR / safe_name,
+        REPO_ROOT / safe_name,
+        REPO_ROOT / clean_name,
+        REPO_ROOT / "frontend" / "public" / safe_name,
+        REPO_ROOT / "frontend" / "public" / clean_name,
     ]
     target = None
     for cand in candidates:
