@@ -87,6 +87,7 @@ data/evaluation/**/results/
 data/evaluation/**/false_recognitions/
 data/cam01_first_frame.jpg
 logs/
+backend/logs/
 *.log
 
 # 6. Local SQLite Databases (Preserve schemas in database/schema.sql)

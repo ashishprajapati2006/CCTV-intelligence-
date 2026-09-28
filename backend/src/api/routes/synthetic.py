@@ -1558,10 +1558,21 @@ def stream_synthetic_video(
     resize_w = int(resize_w.default if hasattr(resize_w, "default") else resize_w)
     loop = bool(loop.default if hasattr(loop, "default") else loop)
 
-    video_path = SYNTHETIC_DIR / video
-    if not video_path.exists():
-        video_path = UPLOADS_DIR / video
-    if not video_path.exists():
+    safe_name = Path(video).name
+    clean_name = safe_name[7:] if safe_name.startswith("upload_") else safe_name
+    candidates = [
+        SYNTHETIC_DIR / safe_name,
+        UPLOADS_DIR / safe_name,
+        SYNTHETIC_DIR / clean_name,
+        UPLOADS_DIR / clean_name,
+        BACKEND_DIR / safe_name,
+        REPO_ROOT / safe_name,
+        REPO_ROOT / clean_name,
+        REPO_ROOT / "frontend" / "public" / safe_name,
+        REPO_ROOT / "frontend" / "public" / clean_name,
+    ]
+    video_path = next((c for c in candidates if c.exists() and c.is_file()), None)
+    if not video_path:
         raise HTTPException(status_code=404, detail=f"Video '{video}' not found.")
 
     get_watchlist_index()

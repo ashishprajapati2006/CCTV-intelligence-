@@ -11,7 +11,11 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
-from geoalchemy2 import Geometry
+try:
+    from geoalchemy2 import Geometry
+except (ImportError, ModuleNotFoundError):
+    Geometry = None
+
 from sqlalchemy import (
     Column,
     DateTime,
@@ -34,7 +38,7 @@ class PointGeometry(TypeDecorator):
     cache_ok = True
 
     def load_dialect_impl(self, dialect):
-        if dialect is not None and dialect.name == "postgresql":
+        if dialect is not None and dialect.name == "postgresql" and Geometry is not None:
             return dialect.type_descriptor(Geometry("POINT", srid=4326))
         return dialect.type_descriptor(Text())
 

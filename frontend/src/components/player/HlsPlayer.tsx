@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from "react"
 import Hls from "hls.js"
 import { Play, Pause, Maximize2, RotateCcw, AlertTriangle, Radio, ShieldAlert } from "lucide-react"
 
+import { API_BASE } from "../../services/api"
+
 interface HlsPlayerProps {
   cameraId: string
   cameraName?: string
@@ -29,9 +31,8 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({
   const [isFallback, setIsFallback] = useState(false)
   const retryCount = useRef(0)
 
-  const apiBase = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "")
-  const defaultHlsUrl = streamUrl || `${apiBase}/api/cameras/${cameraId}/hls/index.m3u8`
-  const fallbackVideoUrl = `${apiBase}/api/cameras/${cameraId}/video`
+  const defaultHlsUrl = streamUrl || `${API_BASE}/api/cameras/${cameraId}/hls/index.m3u8`
+  const fallbackVideoUrl = `${API_BASE}/api/cameras/${cameraId}/video`
 
   const destroyHls = () => {
     if (hlsRef.current) {

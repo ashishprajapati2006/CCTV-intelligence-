@@ -11,7 +11,10 @@ from __future__ import annotations
 import math
 from typing import Any, Dict, List, Optional
 
-from geoalchemy2 import functions as geofunc
+try:
+    from geoalchemy2 import functions as geofunc
+except (ImportError, ModuleNotFoundError):
+    geofunc = None
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 

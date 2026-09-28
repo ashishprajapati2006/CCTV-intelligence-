@@ -257,16 +257,19 @@ class JSONToPostgresMigrator:
             "duplicates_skipped": 0,
         }
 
-    def run_all(self) -> Dict[str, int]:
+    def run_all(self, data_dir: Optional[Path] = None) -> Dict[str, int]:
         """Execute full idempotent migration."""
         self.reset_stats()
-        self.migrate_cameras(Path("data/catalogue/normalized/cameras.json"))
-        self.migrate_vehicles(Path("data/observed/vehicles/vehicles.json"))
-        self.migrate_tracks(Path("data/observed/vehicles/tracks.json"))
-        self.migrate_observations(Path("data/observed/vehicles/observations.jsonl"))
-        self.migrate_watchlist(Path("data/watchlist/vehicles/watchlist.json"))
-        self.migrate_matches(Path("data/matches/raw/matches.jsonl"))
-        self.migrate_journeys(Path("data/journeys/vehicles"))
+        base = data_dir or (Path(__file__).resolve().parent.parent / "data")
+        if not base.exists():
+            base = Path("data")
+        self.migrate_cameras(base / "catalogue" / "normalized" / "cameras.json")
+        self.migrate_vehicles(base / "observed" / "vehicles" / "vehicles.json")
+        self.migrate_tracks(base / "observed" / "vehicles" / "tracks.json")
+        self.migrate_observations(base / "observed" / "vehicles" / "observations.jsonl")
+        self.migrate_watchlist(base / "watchlist" / "vehicles" / "watchlist.json")
+        self.migrate_matches(base / "matches" / "raw" / "matches.jsonl")
+        self.migrate_journeys(base / "journeys" / "vehicles")
         self.session.commit()
         return dict(self.stats)
 
