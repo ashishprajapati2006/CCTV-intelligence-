@@ -90,7 +90,9 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({
         retryCount.current = 0
         if (autoPlay) {
           video.play().then(() => setIsPlaying(true)).catch((err) => {
-            console.warn("Autoplay blocked:", err)
+            if (err?.name !== "AbortError") {
+              console.warn("Autoplay blocked:", err)
+            }
             setIsPlaying(false)
           })
         }

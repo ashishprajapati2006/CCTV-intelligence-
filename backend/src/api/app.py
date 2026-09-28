@@ -48,13 +48,8 @@ logger = logging.getLogger("cctv_api")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Pre-warm AI models in background so user requests experience immediate low-latency detection."""
-    import threading
-    try:
-        from .routes.synthetic import prewarm_models
-    except (ImportError, ModuleNotFoundError):
-        from src.api.routes.synthetic import prewarm_models
-    threading.Thread(target=prewarm_models, daemon=True, name="ai_prewarmer").start()
+    """FastAPI lifespan. Models are lazy-loaded on demand to conserve container RAM and avoid OOM crashes."""
+    logger.info("CCTV Intelligence Platform API started. AI models configured for on-demand lazy loading.")
     yield
 
 
@@ -89,7 +84,7 @@ if env_cors:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
-    allow_origin_regex=r"https://.*\.vercel\.app|https://.*\.onrender\.com",
+    allow_origin_regex=r"https?://.*\.vercel\.app|https?://.*\.onrender\.com",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
